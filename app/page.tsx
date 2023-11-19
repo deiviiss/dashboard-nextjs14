@@ -1,8 +1,8 @@
-import AcmeLogo from '@/app/ui/acme-logo';
-import styles from "./ui/home.module.css"
-import { lusitana } from './ui/fonts';
-import Link from 'next/link';
-import Image from 'next/image';
+import Image from 'next/image'
+import Link from 'next/link'
+import { lusitana } from './ui/fonts'
+import styles from './ui/home.module.css'
+import AcmeLogo from '@/app/ui/acme-logo'
 
 export default function Page() {
   return (
@@ -33,5 +33,5 @@ export default function Page() {
         </div>
       </div>
     </main>
-  );
+  )
 }

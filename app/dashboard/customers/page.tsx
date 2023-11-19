@@ -1,5 +1,4 @@
-import { fetchRevenue } from "../../lib/data";
-
+// import { fetchRevenue } from '../../lib/data'
 
 export default async function CustomersPage() {
   // const reveneu = await fetchRevenue()
@@ -11,5 +10,5 @@ export default async function CustomersPage() {
         Customers
       </main>
     </>
-  );
+  )
 }

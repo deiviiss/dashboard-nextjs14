@@ -1,12 +1,12 @@
-import Image from 'next/image';
-import { lusitana } from '@/app/ui/fonts';
-import Search from '@/app/ui/search';
-import { CustomersTable, FormattedCustomersTable } from '@/app/lib/definitions';
+import Image from 'next/image'
+import { CustomersTable, type FormattedCustomersTable } from '@/app/lib/definitions'
+import { lusitana } from '@/app/ui/fonts'
+import Search from '@/app/ui/search'
 
 export default async function CustomersTable({
-  customers,
+  customers
 }: {
-  customers: FormattedCustomersTable[];
+  customers: FormattedCustomersTable[]
 }) {
   return (
     <div className="w-full">
@@ -116,5 +116,5 @@ export default async function CustomersTable({
         </div>
       </div>
     </div>
-  );
+  )
 }
