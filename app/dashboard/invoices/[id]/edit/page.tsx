@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { fetchInvoiceById, fetchCustomers } from '@/app/lib/data'
-import Breadcrumbs from '@/app/ui/invoices/breadcrumbs'
+import Breadcrumbs from '@/app/ui/breadcrumbs'
 import Form from '@/app/ui/invoices/edit-form'
 
 export default async function Page({ params }: { params: { id: string } }) {

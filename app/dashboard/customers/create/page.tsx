@@ -1,6 +1,6 @@
 import { fetchCustomers } from '@/app/lib/data'
 import Breadcrumbs from '@/app/ui/breadcrumbs'
-import Form from '@/app/ui/invoices/create-form'
+import Form from '@/app/ui/customers/create-form'
 
 export default async function Page() {
   const customers = await fetchCustomers()
@@ -9,15 +9,15 @@ export default async function Page() {
     <main>
       <Breadcrumbs
         breadcrumbs={[
-          { label: 'Facturas', href: '/dashboard/invoices' },
+          { label: 'Clientes', href: '/dashboard/customers' },
           {
-            label: 'Crear factura',
-            href: '/dashboard/invoices/create',
+            label: 'Crear Cliente',
+            href: '/dashboard/customers/create',
             active: true
           }
         ]}
       />
-      <Form customers={customers} />
+      <Form />
     </main>
   )
 }

@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { signIn } from '@/auth';
 
-const FormSchema = z.object({
+const FormSchemaInvoice = z.object({
   id: z.string(),
   customerId: z.string({
     invalid_type_error: 'Por favor seleccione un cliente.',
@@ -21,11 +21,11 @@ const FormSchema = z.object({
   }),
   date: z.string()
 })
-
-const CreateInvoice = FormSchema.omit({ id: true, date: true })
+const CreateInvoice = FormSchemaInvoice.omit({ id: true, date: true })
+const UpdateInvoice = FormSchemaInvoice.omit({ id: true, date: true })
 
 // This is temporary until @types/react-dom is updated
-export type State = {
+export type StateInvoice = {
   errors?: {
     customerId?: string[];
     amount?: string[];
@@ -34,7 +34,7 @@ export type State = {
   message?: string | null;
 };
 
-export async function createInvoice(prevState: State, formData: FormData) {
+export async function createInvoice(prevStateInvoice: StateInvoice, formData: FormData) {
   const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -69,9 +69,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
   redirect('/dashboard/invoices')
 }
 
-const UpdateInvoice = FormSchema.omit({ id: true, date: true })
-
-export async function updateInvoice(id: string, prevState: State, formData: FormData) {
+export async function updateInvoice(id: string, prevStateInvoice: StateInvoice, formData: FormData) {
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -114,6 +112,127 @@ export async function deleteInvoice(id: string) {
   } catch (error) {
     return {
       message: 'Database Error: Failed to Delete Invoice.'
+    }
+  }
+}
+
+const FormCustomerSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, {
+    message: 'Por favor escriba un nombre.',
+  }),
+  email: z.string().email({
+    message: 'Por favor escriba un correo electrónico.',
+  }),
+  image_file: z.custom((value) => {
+    if (value == null || !(value instanceof Blob) || value.size === 0) {
+      return false
+    }
+    return value;
+  }, 'Por favor, seleccione un archivo válido.'),
+})
+const CreateCustomerSchema = FormCustomerSchema.omit({ id: true })
+const UpdateCustomer = FormCustomerSchema.omit({ id: true, date: true })
+
+// This is temporary until @types/react-dom is updated
+export type StateCustomer = {
+  errors?: {
+    name?: string[];
+    email?: string[];
+    image_file?: string[];
+  };
+  message?: string | null;
+};
+
+export async function createCustomer(prevStateCustomer: StateCustomer, formData: FormData) {
+  const validatedFields = CreateCustomerSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    image_file: formData.get('image'),
+  });
+
+  // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Campos faltantes. No se pudo crear el cliente.',
+    };
+  }
+
+  // Prepare data for insertion into the database
+  const { name, email, image_file } = validatedFields.data;
+
+  //* save image in cloudinary
+  // console.log('Image File')
+  // console.log(image_file) // en este punto se guardara en cloudinary
+
+  //* url from cloudinary
+  const imageUrl = '/customers/customer-default.png'
+
+  try {
+    await sql`
+     INSERT INTO customers (name, email, image_url)
+     VALUES (${name}, ${email}, ${imageUrl})
+   `
+  } catch (error) {
+    return {
+      message: 'Database Error: Failed to Create Customer.'
+    }
+  }
+
+  revalidatePath('/dashboard/customers')
+  redirect('/dashboard/customers')
+}
+
+export async function updateCustomer(id: string, prevStateCustomer: StateCustomer, formData: FormData) {
+  const validatedFields = UpdateCustomer.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    image_file: formData.get('image'),
+  });
+
+  // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Campos faltantes. No se pudo crear la factura.',
+    };
+  }
+
+  // Prepare data for insertion into the database
+  const { name, email, image_file } = validatedFields.data;
+
+  //* save image in cloudinary
+  // console.log('Image File')
+  // console.log(image_file) // en este punto se actualizara en cloudinary
+
+  //* url from cloudinary
+  const imageUrl = '/customers/customer-default.png'
+
+  try {
+    await sql`
+    UPDATE customers
+    SET name = ${name}, email = ${email}, image_url = ${imageUrl}
+    WHERE id = ${id}
+  `
+  } catch (error) {
+    return {
+      message: 'Database Error: Failed to Update Invoice.'
+    }
+  }
+
+  revalidatePath('/dashboard/customers')
+  redirect('/dashboard/customers')
+}
+
+export async function deleteCustomer(id: string) {
+  try {
+    await sql`DELETE FROM customers WHERE id = ${id}`
+    revalidatePath('/dashboard/customers')
+    return { message: 'Deleted Customer.' }
+  } catch (error) {
+    return {
+      message: 'Database Error: Failed to Delete Customer.'
     }
   }
 }

@@ -1,8 +1,8 @@
 import { sql } from '@vercel/postgres'
+import { prisma } from "@/app/lib/prisma";
 import { unstable_noStore as noStore } from 'next/cache'
 import {
   type CustomerField,
-  type CustomersTable,
   type InvoiceForm,
   type InvoicesTable,
   type LatestInvoiceRaw,
@@ -11,16 +11,18 @@ import {
 } from './definitions'
 import { formatCurrency } from './utils'
 
+const ITEMS_PER_PAGE = 6
+
 export async function fetchRevenue() {
   noStore()
   try {
     // Artificially delay a reponse for demo purposes.
     // Don't do this in real life :)
-    console.log('Fetching revenue data...')
-    await new Promise((resolve) => setTimeout(resolve, 5000))
+    // console.log('Fetching revenue data...')
+    // await new Promise((resolve) => setTimeout(resolve, 5000))
 
     const data = await sql<Revenue>`SELECT * FROM revenue`
-    console.log('Data fetch complete after 3 seconds.')
+    // console.log('Data fetch complete after 3 seconds.')
 
     return data.rows
   } catch (error) {
@@ -32,9 +34,6 @@ export async function fetchRevenue() {
 export async function fetchLatestInvoices() {
   noStore()
   try {
-    // Artificially delay a reponse for demo purposes.
-    // Don't do this in real life :)
-    await new Promise((resolve) => setTimeout(resolve, 3000))
 
     const data = await sql<LatestInvoiceRaw>`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
@@ -57,9 +56,6 @@ export async function fetchLatestInvoices() {
 export async function fetchCardData() {
   noStore()
   try {
-    // Artificially delay a reponse for demo purposes.
-    // Don't do this in real life :)
-    await new Promise((resolve) => setTimeout(resolve, 7000))
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
@@ -93,7 +89,6 @@ export async function fetchCardData() {
   }
 }
 
-const ITEMS_PER_PAGE = 6
 export async function fetchFilteredInvoices(
   query: string,
   currentPage: number
@@ -195,22 +190,106 @@ export async function fetchCustomers() {
   }
 }
 
-export async function fetchFilteredCustomers(query: string) {
+export async function fetchFilteredCustomers(query: string, currentPage: number) {
+  noStore()
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE
   try {
-    const data = await sql<CustomersTable>`
-SELECT customers.id, customers.name, customers.email, customers.image_url, COUNT(invoices.id) AS total_invoices, SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending, SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid FROM customers LEFT JOIN invoices ON customers.id = invoices.customer_id WHERE customers.name ILIKE ${`%${query}%`} OR customers.email ILIKE ${`%${query}%`} GROUP BY customers.id, customers.name, customers.email, customers.image_url ORDER BY customers.name ASC
-`
+    const customers = await prisma.customers.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        invoices: {
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+      take: ITEMS_PER_PAGE, // Estableces el límite aquí
+      skip: offset, // Aplicas el offset para la paginación
+    });
 
-    const customers = data.rows.map((customer) => ({
-      ...customer,
-      total_pending: formatCurrency(customer.total_pending),
-      total_paid: formatCurrency(customer.total_paid)
-    }))
+    const formattedCustomersStatistics = customers.map((customer) => {
+      const total_invoices = customer.invoices.length;
+      const total_pending = customer.invoices.reduce((sum, invoice) => {
+        return sum + (invoice.status === 'pending' ? invoice.amount : 0);
+      }, 0);
+      const total_paid = customer.invoices.reduce((sum, invoice) => {
+        return sum + (invoice.status === 'paid' ? invoice.amount : 0);
+      }, 0);
 
-    return customers
-  } catch (err) {
-    console.error('Database Error:', err)
-    throw new Error('Failed to fetch customer table.')
+      return {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        image_url: customer.image_url,
+        total_invoices,
+        total_pending: formatCurrency(total_pending),
+        total_paid: formatCurrency(total_paid),
+      };
+    });
+
+    return formattedCustomersStatistics;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch customers filtered.');
+  }
+}
+
+export async function fetchCustomersPages(query: string) {
+  noStore()
+  try {
+    const count = await prisma.customers.count({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+          { image_url: { contains: query, mode: 'insensitive' } },
+        ],
+      }
+    });
+
+    // Paso 2: Calcular el número total de páginas
+    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of invoices.');
+  }
+}
+
+export async function fetchCustomerById(id: string) {
+  noStore()
+  try {
+    const customer = await prisma.customers.findUnique({
+      where: {
+        id: id
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image_url: true
+      }
+    });
+
+    // Verificar si se encontró el cliente
+    if (customer) {
+
+    }
+
+    return customer;
+  } catch (error) {
+    console.error('Database Error:', error)
   }
 }
 
