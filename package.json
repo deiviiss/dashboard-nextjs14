@@ -5,7 +5,8 @@
     "dev": "next dev",
     "start": "next start",
     "seed": "node -r dotenv/config ./scripts/seed.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "if [ -n \"$DATABASE_URL\" ]; then prisma db push; fi"
   },
   "dependencies": {
     "@heroicons/react": "^2.0.18",
